@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime.js Cool Background</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* 禁止滚动 */
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="background"></div>
+
+    <!-- 引入 anime.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+    <script>
+        // 12 种颜色
+        const colors = [
+            '#D8F3DC',  // 淡绿色
+            '#F3D8E7',  // 淡紫色
+            '#F35A5A',  // 亮红色
+            '#5A7AF3',  // 亮蓝色
+            '#F39C5A',  // 橙色
+            '#9C5AF3',  // 深紫色
+            '#F3E45A',  // 亮黄色
+            '#5AF3E0',  // 亮青色
+            '#5A5AF3',  // 深蓝色
+            '#F35A9A',  // 亮粉红色
+            '#8F8F8F',  // 中性灰色
+            '#5AF39C'   // 青绿色
+        ];
+
+        // 创建背景元素
+        const background = document.getElementById('background');
+
+        // 动态生成多个彩色圆形
+        for (let i = 0; i < 100; i++) {
+            const shape = document.createElement('div');
+            shape.classList.add('shape');
+            const size = Math.random() * 300 + 10; // 随机大小
+            shape.style.width = `${size}px`;
+            shape.style.height = `${size}px`;
+            shape.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            shape.style.top = `${Math.random() * 100}vh`;
+            shape.style.left = `${Math.random() * 100}vw`;
+            background.appendChild(shape);
+        }
+
+        // 使用 anime.js 创建动画
+        function animateShapes() {
+            anime({
+                targets: '.shape',
+                translateX: function () {
+                    return anime.random(-1000, 1000);
+                },
+                translateY: function () {
+                    return anime.random(-1000, 1000);
+                },
+                scale: function () {
+                    return anime.random(0.5, 2);
+                },
+                rotate: function () {
+                    return anime.random(0, 360);
+                },
+                easing: 'easeInOutSine',
+                duration: 3000,
+                opacity: function () {
+                    return anime.random(0.3, 0.9);
+                },
+                complete: animateShapes // 动画完成时，重新开始
+            });
+        }
+
+        animateShapes(); // 启动动画
+    </script>
+</body>
+
+</html>

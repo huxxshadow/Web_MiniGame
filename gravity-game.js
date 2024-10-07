@@ -15,8 +15,8 @@ const render = Render.create({
     options: {
         width: canvasWidth,
         height: canvasHeight,
-        wireframes: false,
-        background: '#fafafa'
+        wireframes: false,  // 禁用线框模式，启用填充和文本渲染
+        background: 'transparent'
     }
 });
 
@@ -50,24 +50,34 @@ function increaseCanvasHeight() {
     Render.setPixelRatio(render, window.devicePixelRatio);
 
     // 移动底部边界（地板）
-    Body.setPosition(ground, { x: canvasWidth / 2, y: canvasHeight + 25 });
+    Body.setPosition(ground, { x: canvasWidth / 2 + 50, y: canvasHeight + 25 });
     // 更新左右墙的高度
     Body.setPosition(leftWall, { x: -25, y: canvasHeight / 2 });
     Body.setPosition(rightWall, { x: canvasWidth + 25, y: canvasHeight / 2 });
 
     // 拉长左右墙的高度
-    Body.scale(leftWall, 1, (canvasHeight + 50) / leftWall.bounds.max.y);
-    Body.scale(rightWall, 1, (canvasHeight + 50) / rightWall.bounds.max.y);
+    Body.scale(leftWall, 1, (canvasHeight + 50) / leftWall.bounds.max.y) + 0.1;
+    Body.scale(rightWall, 1, (canvasHeight + 50) / rightWall.bounds.max.y) + 0.1;
 }
 
 // 创建边界
 function createBoundaries() {
     const thickness = 50;
 
-    ground = Bodies.rectangle(canvasWidth / 2, canvasHeight + thickness / 2, canvasWidth + 100, thickness, { isStatic: true });
-    ceiling = Bodies.rectangle(canvasWidth / 2, -thickness / 2, canvasWidth + 100, thickness, { isStatic: true });
-    leftWall = Bodies.rectangle(-thickness / 2, canvasHeight / 2, thickness, canvasHeight + 100, { isStatic: true });
-    rightWall = Bodies.rectangle(canvasWidth + thickness / 2, canvasHeight / 2, thickness, canvasHeight + 100, { isStatic: true });
+    // 添加 render 属性，用于改变边界的颜色
+    const boundaryStyle = {
+        isStatic: true,
+        render: {
+            fillStyle: '#34572B',  // 内部填充颜色 (例如：番茄红)
+            strokeStyle: '#34572B',  // 边框颜色 (例如：黑色)
+            lineWidth: 3            // 边框线宽
+        }
+    };
+
+    ground = Bodies.rectangle(canvasWidth / 2, canvasHeight + thickness / 2, canvasWidth + 100, thickness, boundaryStyle);
+    ceiling = Bodies.rectangle(canvasWidth / 2, -thickness / 2, canvasWidth + 100, thickness, boundaryStyle);
+    leftWall = Bodies.rectangle(-thickness / 2, canvasHeight / 2, thickness, canvasHeight + 100, boundaryStyle);
+    rightWall = Bodies.rectangle(canvasWidth + thickness / 2, canvasHeight / 2, thickness, canvasHeight + 100, boundaryStyle);
 
     Composite.add(world, [ground, ceiling, leftWall, rightWall]);
 }
@@ -89,9 +99,8 @@ function updateBoundaries() {
     Body.setPosition(leftWall, { x: -25, y: canvasHeight / 2 });
     Body.setPosition(rightWall, { x: canvasWidth + 25, y: canvasHeight / 2 });
 
-    // 更新左右墙的宽度
-    Body.scale(ground, canvasWidth / ground.bounds.max.x, 1);
-    Body.scale(ceiling, canvasWidth / ceiling.bounds.max.x, 1);
+    Body.scale(ground, canvasWidth / ground.bounds.max.x + 0.1, 1);
+    Body.scale(ceiling, canvasWidth / ceiling.bounds.max.x + 0.1, 1);
 
     // 确保物体不会被视为超出边界
     render.bounds.min.x = 0;
@@ -104,37 +113,71 @@ function updateBoundaries() {
 window.addEventListener('resize', updateBoundaries);
 
 // 初始化方块
-const boxSize = 50;
+const boxSize = 75;
 const boxes = [];
 
 // 不同数字的颜色
 const colors = {
-    1: '#FF5733',
-    2: '#33FF57',
-    4: '#3357FF',
-    8: '#FF33A6',
-    16: '#33FFF3',
-    32: '#FF8C33',
-    64: '#9D33FF',
-    128: '#FFC300',
-    256: '#FF5733',
-    512: '#33FF57',
-    1024: '#3357FF',
-    2048: '#FF33A6'
+    1: '#D8F3DC',  // 淡绿色
+    2: '#F3D8E7',  // 淡紫色
+    4: '#F35A5A',  // 亮红色
+    8: '#5A7AF3',  // 亮蓝色
+    16: '#F39C5A', // 橙色
+    32: '#9C5AF3', // 深紫色
+    64: '#F3E45A', // 亮黄色
+    128: '#5AF3E0', // 亮青色
+    256: '#5A5AF3', // 深蓝色
+    512: '#F35A9A', // 亮粉红色
+    1024: '#8F8F8F', // 中性灰色
+    2048: '#5AF39C' // 青绿色
 };
 
-// 根据数字生成不同的形状
+// 映射数字到对应的英文单词，按照给定的顺序和同义词扩展
+const valueToText = {
+    1: "Try",              // 尝试
+    2: "Effort",           // 努力
+    4: "Failure",     // 坚持
+    8: "Reflection",       // 反思
+    16: "Growth",          // 成长
+    32: "Persistence",     // 坚持（同义词）
+    64: "inspiration",   // 反思（同义词）
+    128: "Progress",    // 成长（同义词）
+    256: "Perseverance",     // 坚持（同义词）
+    512: "Improvement",  // 反思（同义词）
+    1024: "Success",   // 成长（同义词）
+    2048: "GreatGame",        // 
+    default: "GreatGame"
+};
+
+// 构造不同形状的大小乘数 factor
+const shapeFactors = {
+    1: 0.7,
+    2: 1,
+    4: 1.2,
+    8: 1.4,
+    16: 1.5,
+    32: 1.6,
+    64: 1.7,
+    128: 1.8,
+    256: 1.9,
+    512: 2.0,
+    1024: 2.1,
+    2048: 2.2
+};
+
+// 创建形状
 function createShape(x, y, value = 1) {
     let shape;
+    const factor = shapeFactors[value] || 1.0;  // 根据 value 获取对应的 factor
     let options = {
         label: value.toString(),
         restitution: 0.7,
         render: {
             fillStyle: colors[value] || '#FFAA33',
             text: {
-                content: value.toString(),
+                content: valueToText[value] || value.toString(),
                 size: 24,
-                color: 'black',
+                color: '#34572B',
                 align: 'center'
             }
         }
@@ -142,50 +185,53 @@ function createShape(x, y, value = 1) {
 
     switch (value) {
         case 1:
-            shape = Bodies.circle(x, y, boxSize / 2, options);
+            shape = Bodies.circle(x, y, boxSize / 2 * factor, options);
             break;
         case 2:
-            shape = Bodies.rectangle(x, y, boxSize, boxSize, options);
+            shape = Bodies.rectangle(x, y, boxSize * factor, boxSize * factor, options);
             break;
         case 4:
-            shape = Bodies.polygon(x, y, 3, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 3, boxSize / 2 * factor, options);
             break;
         case 8:
-            shape = Bodies.polygon(x, y, 5, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 5, boxSize / 2 * factor, options);
             break;
         case 16:
-            shape = Bodies.polygon(x, y, 6, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 6, boxSize / 2 * factor, options);
             break;
         case 32:
-            shape = Bodies.polygon(x, y, 8, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 8, boxSize / 2 * factor, options);
             break;
         case 64:
-            shape = Bodies.polygon(x, y, 10, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 10, boxSize / 2 * factor, options);
             break;
         case 128:
-            shape = Bodies.polygon(x, y, 12, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 12, boxSize / 2 * factor, options);
             break;
         case 256:
-            shape = Bodies.polygon(x, y, 14, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 14, boxSize / 2 * factor, options);
             break;
         case 512:
-            shape = Bodies.polygon(x, y, 16, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 16, boxSize / 2 * factor, options);
             break;
         case 1024:
-            shape = Bodies.circle(x, y, boxSize, options);
+            shape = Bodies.circle(x, y, boxSize / 2 * factor, options);
             break;
         case 2048:
-            shape = Bodies.polygon(x, y, 18, boxSize / 2, options);
+            shape = Bodies.polygon(x, y, 18, boxSize / 2 * factor, options);
             break;
         default:
-            shape = Bodies.rectangle(x, y, boxSize, boxSize, options);
+            shape = Bodies.rectangle(x, y, boxSize * factor, boxSize * factor, options);
     }
 
     shape.value = value;
+    shape.factor = factor;  // 保存 factor 信息
     boxes.push(shape);
     Composite.add(world, shape);
     return shape;
 }
+
+
 
 // 合并两个方块
 function mergeBoxes(boxA, boxB) {
@@ -196,6 +242,8 @@ function mergeBoxes(boxA, boxB) {
     updateScore(newValue);
 }
 
+
+
 // 检查是否有两个物体可以合并
 Events.on(engine, 'beforeUpdate', function () {
     for (let i = 0; i < boxes.length; i++) {
@@ -203,7 +251,7 @@ Events.on(engine, 'beforeUpdate', function () {
             const bodyA = boxes[i];
             const bodyB = boxes[j];
 
-            if (bodyA.value === bodyB.value && areBodiesClose(bodyA, bodyB) && isBodyStill(bodyA) && isBodyStill(bodyB)) {
+            if (bodyA.value === bodyB.value && areBodiesClose(bodyA, bodyB)) {
                 mergeBoxes(bodyA, bodyB);
                 boxes.splice(j, 1);
                 boxes.splice(i, 1);
@@ -214,16 +262,18 @@ Events.on(engine, 'beforeUpdate', function () {
 });
 
 // 检查物体之间的距离
+// 检查物体之间的距离，考虑 factor
 function areBodiesClose(bodyA, bodyB) {
     const distance = Math.sqrt(Math.pow(bodyA.position.x - bodyB.position.x, 2) +
         Math.pow(bodyA.position.y - bodyB.position.y, 2));
-    return distance < boxSize;
+    const combinedSize = (boxSize / 2 * bodyA.factor) + (boxSize / 2 * bodyB.factor);  // 考虑 factor
+    return distance < combinedSize;
 }
 
-// 检查物体是否静止
-function isBodyStill(body) {
-    return Math.abs(body.velocity.x) < 0.1 && Math.abs(body.velocity.y) < 0.1;
-}
+// // 检查物体是否静止
+// function isBodyStill(body) {
+//     return Math.abs(body.velocity.x) < 0.1 && Math.abs(body.velocity.y) < 0.1;
+// }
 
 // 生成新方块
 function generateNewBox() {
@@ -234,27 +284,10 @@ function generateNewBox() {
 
 // 控制重力和施加作用力
 document.addEventListener('keydown', function (event) {
-    switch (event.key.toLowerCase()) {
-        case 'w':
-            engine.world.gravity.x = 0;
-            engine.world.gravity.y = -1;
-            generateNewBox();  // 按下W时生成新方块
-            break;
-        case 's':
-            engine.world.gravity.x = 0;
-            engine.world.gravity.y = 1;
-            generateNewBox();  // 按下S时生成新方块
-            break;
-        case 'a':
-            engine.world.gravity.x = -1;
-            engine.world.gravity.y = 0;
-            generateNewBox();  // 按下A时生成新方块
-            break;
-        case 'd':
-            engine.world.gravity.x = 1;
-            engine.world.gravity.y = 0;
-            generateNewBox();  // 按下D时生成新方块
-            break;
+    const gravityMap = { 'w': [0, -1], 's': [0, 1], 'a': [-1, 0], 'd': [1, 0] };
+    if (gravityMap[event.key]) {
+        [engine.world.gravity.x, engine.world.gravity.y] = gravityMap[event.key];
+        generateNewBox();
     }
 });
 
@@ -283,6 +316,30 @@ window.addEventListener('resize', function () {
     lastWidth = newWidth;
     lastHeight = newHeight;
 });
+
+// 获取 canvas 的 2D 上下文，用于手动绘制文字
+const context = render.context;
+
+// 手动绘制文字
+Events.on(render, 'afterRender', function () {
+    boxes.forEach(box => {
+        context.font = '12px Arial';  // 设置字体
+        context.fillStyle = 'black';  // 设置文字颜色
+
+        // 获取物体的位置
+        const x = box.position.x;
+        const y = box.position.y;
+
+        // 获取物体的值，并映射到相应的单词
+        const word = valueToText[box.value] || box.value.toString();
+
+        // 绘制文本，居中显示
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(word, x, y);  // 在物体的中心绘制单词
+    });
+});
+
 
 // 初始化游戏
 createBoundaries();
