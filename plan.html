@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            width: 1100px;
+        }
+        .timeline-container {
+            margin-left: 300px;
+            border-left: 1px solid #ddd;
+        }
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(20, 40px);
+            border-bottom: 1px solid #ddd;
+        }
+        .year-row {
+            display: grid;
+            grid-template-columns: 80px 480px 240px;
+            margin-left: 300px;
+            border-bottom: 2px solid #000;
+        }
+        .year {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px 0;
+        }
+        .month {
+            text-align: center;
+            font-size: 12px;
+            padding: 5px 0;
+            border-right: 1px solid #eee;
+        }
+        .gantt {
+            position: relative;
+            margin-top: 20px;
+        }
+        .task-row {
+            display: flex;
+            height: 40px;
+            position: relative;
+            border-bottom: 1px solid #eee;
+        }
+        .task-label {
+            position: absolute;
+            left: -300px;
+            width: 290px;
+            text-align: left;
+            padding-right: 10px;
+            line-height: 40px;
+            font-size: 13px;
+        }
+        .bar {
+            height: 30px;
+            margin: 5px 0;
+            border-radius: 3px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            position: absolute;
+        }
+        .grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            grid-template-columns: repeat(20, 40px);
+            pointer-events: none;
+        }
+        .grid-line {
+            border-right: 1px solid #eee;
+        }
+        .key-table {
+            margin-top: 30px;
+            border-collapse: collapse;
+            width: 500px;
+        }
+        .key-table th, .key-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .key-table th {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Internship Management System Implementation Timeline</h2>
+        
+        <div class="year-row">
+            <div class="year">2024</div>
+            <div class="year">2025</div>
+            <div class="year">2026</div>
+        </div>
+
+        <div class="timeline-container">
+            <div class="timeline" id="months"></div>
+            <div class="gantt" id="tasks">
+                <div class="grid" id="grid"></div>
+            </div>
+        </div>
+
+        <table class="key-table">
+            <tr><th>Abbreviation</th><th>Full Name</th></tr>
+            <tr><td>IMS</td><td>Internship Management System</td></tr>
+            <tr><td>SRAA</td><td>Security Risk Assessment and Audit</td></tr>
+            <tr><td>PIA</td><td>Privacy Impact Assessment</td></tr>
+            <tr><td>UI/UX</td><td>User Interface/User Experience</td></tr>
+            <tr><td>API</td><td>Application Programming Interface</td></tr>
+            <tr><td>QA</td><td>Quality Assurance</td></tr>
+        </table>
+    </div>
+
+    <script>
+        const tasks = [
+            { name: "IMS Requirements Analysis", startMonth: 0, duration: 2, color: "#9b59b6" },
+            { name: "SRAA & PIA", startMonth: 1, duration: 2, color: "#3498db" },
+            { name: "System Architecture Design", startMonth: 2, duration: 3, color: "#2ecc71" },
+            { name: "UI/UX Design", startMonth: 3, duration: 2, color: "#e67e22" },
+            { name: "Database Design & Setup", startMonth: 4, duration: 2, color: "#e74c3c" },
+            { name: "Core Module Development", startMonth: 5, duration: 6, color: "#1abc9c" },
+            { name: "API Development", startMonth: 7, duration: 4, color: "#34495e" },
+            { name: "Integration Testing", startMonth: 11, duration: 2, color: "#95a5a6" },
+            { name: "QA Testing", startMonth: 13, duration: 2, color: "#d35400" },
+            { name: "User Training Materials", startMonth: 14, duration: 2, color: "#27ae60" },
+            { name: "System Deployment", startMonth: 15, duration: 2, color: "#c0392b" },
+            { name: "Post-Implementation Support", startMonth: 17, duration: 3, color: "#8e44ad" }
+        ];
+
+        const months = [
+            11, 12,                         // 2024
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,  // 2025
+            1, 2, 3, 4, 5, 6                // 2026
+        ];
+        
+        document.getElementById('months').innerHTML = months.map(month => 
+            `<div class="month">${month}</div>`
+        ).join('');
+
+        document.getElementById('grid').innerHTML = Array(20).fill('<div class="grid-line"></div>').join('');
+
+        const tasksDiv = document.getElementById('tasks');
+        tasks.forEach(task => {
+            const taskRow = document.createElement('div');
+            taskRow.className = 'task-row';
+            taskRow.innerHTML = `
+                <div class="task-label">${task.name}</div>
+                <div class="bar" style="
+                    background: ${task.color};
+                    width: ${task.duration * 40}px;
+                    left: ${task.startMonth * 40}px;
+                ">
+                    ${task.duration} months
+                </div>
+            `;
+            tasksDiv.appendChild(taskRow);
+        });
+    </script>
+</body>
+</html>

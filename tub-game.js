@@ -1,252 +1,204 @@
 // 设置画布的尺寸
 const mini2_canvas = document.getElementById('minigame2_world');
-const mini2_pixelRatio = window.devicePixelRatio;  // 获取设备的像素比
-const widthFactor = 0.40;  // 画布宽度占屏幕宽度的比例
-const heightFactor = 0.50;  // 画布高度占屏幕高度的比例
-// 动态更新canvas的实际宽高以保证比例正确
-mini2_width = window.innerWidth * widthFactor;
-mini2_height = window.innerWidth * heightFactor;
+const mini2_pixelRatio = window.devicePixelRatio;
+const widthFactor = 0.40;
+const heightFactor = 0.50;
+
+// 缓存频繁使用的值
+let mini2_width = window.innerWidth * widthFactor;
+let mini2_height = window.innerWidth * heightFactor;
 
 mini2_canvas.width = mini2_width;
 mini2_canvas.height = mini2_height;
 
-// 获取Matter.js库的模块
 const { Engine: mini2_Engine, Render: mini2_Render, Runner: mini2_Runner, World: mini2_World, Bodies: mini2_Bodies } = Matter;
 
-// 创建引擎
 const mini2_engine = mini2_Engine.create();
 const mini2_world = mini2_engine.world;
 
-// 创建渲染器
-const mini2_render = mini2_Render.create({
+// 创建渲染器配置对象
+const renderOptions = {
     canvas: mini2_canvas,
     engine: mini2_engine,
     options: {
         width: mini2_canvas.width,
         height: mini2_canvas.height,
-        wireframes: false, // 不显示线框
-        background: 'transparent', // 设置背景为透明
+        wireframes: false,
+        background: 'transparent',
         pixelRatio: mini2_pixelRatio
     }
-});
+};
 
-// 运行引擎和渲染器
-mini2_Engine.run(mini2_engine);
-mini2_Render.run(mini2_render);
+const mini2_render = mini2_Render.create(renderOptions);
 
-// 创建一个Runner来控制物理引擎的更新频率
+// 使用 requestAnimationFrame 优化渲染
+Matter.Runner.run(mini2_engine);
+let renderRequestId;
+
+function optimizedRender() {
+    mini2_Render.world(mini2_render);
+    renderRequestId = requestAnimationFrame(optimizedRender);
+}
+optimizedRender();
+
 const mini2_runner = mini2_Runner.create();
 mini2_Runner.run(mini2_runner, mini2_engine);
 
-// 创建边界（上、下、左、右）
-// 边界的厚度
+// 创建边界的通用配置
 const mini2_wallThickness = 10;
-
-// 顶部边界
-const mini2_topWall = mini2_Bodies.rectangle(mini2_width / 2, 0, mini2_width, mini2_wallThickness, {
+const wallConfig = {
     isStatic: true,
     restitution: 0.98,
     render: {
         fillStyle: 'transparent'
     }
-});
+};
 
-// 底部边界
-const mini2_bottomWall = mini2_Bodies.rectangle(mini2_width / 2, mini2_height, mini2_width, mini2_wallThickness, {
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent'
-    }
-});
+// 创建边界
+const mini2_topWall = mini2_Bodies.rectangle(mini2_width / 2, 0, mini2_width, mini2_wallThickness, wallConfig);
+const mini2_bottomWall = mini2_Bodies.rectangle(mini2_width / 2, mini2_height, mini2_width, mini2_wallThickness, wallConfig);
+const mini2_leftWall = mini2_Bodies.rectangle(0, mini2_height / 2, mini2_wallThickness, mini2_height, wallConfig);
+const mini2_rightWall = mini2_Bodies.rectangle(mini2_width, mini2_height / 2, mini2_wallThickness, mini2_height, wallConfig);
 
-// 左侧边界
-const mini2_leftWall = mini2_Bodies.rectangle(0, mini2_height / 2, mini2_wallThickness, mini2_height, {
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent'
-    }
-});
-
-// 右侧边界
-const mini2_rightWall = mini2_Bodies.rectangle(mini2_width, mini2_height / 2, mini2_wallThickness, mini2_height, {
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent'
-    }
-});
-
-// 添加边界到物理世界中
 mini2_World.add(mini2_world, [mini2_topWall, mini2_bottomWall, mini2_leftWall, mini2_rightWall]);
 
-// 生成0.556画面宽度的长方形，距离底部0.043画面高度的位置
-const rectWidth = mini2_width * 0.48; // 0.556画面宽度
-const rectHeight = mini2_height * 0.015; // 长方形的高度，可以随意设定
-const rectX = mini2_width / 2; // 在画布的水平中心位置
-const rectY = mini2_height - (mini2_height * 0.058); // 在距离底部0.043画面高度的位置
+// 创建主矩形
+const rectWidth = mini2_width * 0.48;
+const rectHeight = mini2_height * 0.015;
+const rectX = mini2_width / 2;
+const rectY = mini2_height - (mini2_height * 0.058);
 
-const mini2_rectangle = mini2_Bodies.rectangle(rectX, rectY, rectWidth, rectHeight, {
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent' // 设置矩形的颜色为蓝色
-    }
-});
-
-// 将矩形添加到物理世界中
+const mini2_rectangle = mini2_Bodies.rectangle(rectX, rectY, rectWidth, rectHeight, wallConfig);
 mini2_World.add(mini2_world, mini2_rectangle);
 
-const angle = 1.820;  // 30°角（弧度制）
-const smallRectWidth = mini2_width * 0.26;  // 小长方形的宽度
-const smallRectHeight = mini2_height * 0.035;  // 小长方形的高度
-const offsetX = rectWidth / 2;  // 水平偏移量（矩形的半宽）
+// 创建倾斜矩形
+const angle = 1.820;
+const smallRectWidth = mini2_width * 0.26;
+const smallRectHeight = mini2_height * 0.035;
+const offsetX = rectWidth / 2;
 
-// 左端点的长方形
-const leftRectX = rectX - offsetX - mini2_width * 0.06;
-const leftRect = mini2_Bodies.rectangle(leftRectX, rectY - mini2_height * 0.1, smallRectWidth, smallRectHeight, {
-    angle: -angle,  // 向左倾斜30°
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent' 
-    }
-});
+const leftRect = mini2_Bodies.rectangle(
+    rectX - offsetX - mini2_width * 0.06,
+    rectY - mini2_height * 0.1,
+    smallRectWidth,
+    smallRectHeight,
+    { ...wallConfig, angle: -angle }
+);
 
-// 右端点的长方形
-const rightRectX = rectX + offsetX + mini2_width * 0.06;
-const rightRect = mini2_Bodies.rectangle(rightRectX, rectY - mini2_height * 0.1, smallRectWidth, smallRectHeight, {
-    angle: angle,  // 向右倾斜30°
-    isStatic: true,
-    restitution: 0.98,
-    render: {
-        fillStyle: 'transparent' 
-    }
-});
+const rightRect = mini2_Bodies.rectangle(
+    rectX + offsetX + mini2_width * 0.06,
+    rectY - mini2_height * 0.1,
+    smallRectWidth,
+    smallRectHeight,
+    { ...wallConfig, angle: angle }
+);
 
-// 将两个倾斜的长方形添加到物理世界中
 mini2_World.add(mini2_world, [leftRect, rightRect]);
 
+// 优化按钮点击处理
+const mini2_boxes = new Set();
+const mini2_valueToText = new Map();
 
-const mini2_buttons = document.querySelectorAll('.minigame2buttons')
+const buttonHandler = (() => {
+    let throttleTimer;
+    
+    return (event) => {
+        if (throttleTimer) return;
+        
+        throttleTimer = setTimeout(() => {
+            throttleTimer = null;
+        }, 100);
 
-// 用来存储创建的物理矩形，以便在 afterRender 时手动绘制文本
-const mini2_boxes = [];
-const mini2_valueToText = {}; // 存储矩形和对应的文本
-
-mini2_buttons.forEach(button => {
-    button.addEventListener('click', (event) => {
-        // 获取按钮的尺寸和位置
+        const button = event.currentTarget;
         const buttonRect = button.getBoundingClientRect();
-        const buttonWidth = buttonRect.width;
-        const buttonHeight = buttonRect.height;
-        const buttonText = button.innerText;
-
-        // // 按钮的位置相对于canvas左上的x、y坐标
-        // const buttonX = buttonRect.left + buttonWidth / 2;
-        // const buttonY = buttonRect.top + buttonHeight / 2;
-
-        // 创建与按钮大小相同的物理矩形
-        const mini2_buttonBody = mini2_Bodies.rectangle(mini2_width * 0.62, mini2_height * 0.24, buttonWidth, buttonHeight, {
-            chamfer: { radius: 20 },
-            restitution: 0.98,
-            render: {
-                fillStyle: '#2D6A4F', // 设置按钮颜色
+        
+        const mini2_buttonBody = mini2_Bodies.rectangle(
+            mini2_width * 0.62,
+            mini2_height * 0.24,
+            buttonRect.width,
+            buttonRect.height,
+            {
+                chamfer: { radius: 20 },
+                restitution: 0.98,
+                render: { fillStyle: '#2D6A4F' }
             }
-        });
+        );
 
-        // 将按钮矩形添加到物理世界
         mini2_World.add(mini2_world, mini2_buttonBody);
+        mini2_boxes.add(mini2_buttonBody);
+        mini2_valueToText.set(mini2_buttonBody.id, button.innerText);
+    };
+})();
 
-        // 存储矩形到 boxes 数组中，以便后续渲染文本
-        mini2_boxes.push(mini2_buttonBody);
-
-        // 将按钮文本与物理矩形关联，存储在 valueToText 对象中
-        mini2_valueToText[mini2_buttonBody.id] = buttonText;
-    });
+document.querySelectorAll('.minigame2buttons').forEach(button => {
+    button.addEventListener('click', buttonHandler);
 });
 
-// 获取 Matter.js 渲染器的 canvas 上下文
+// 优化文本渲染
 const mini2_context = mini2_render.context;
 
-// 监听渲染器的 afterRender 事件，在每次渲染后绘制文本
-Matter.Events.on(mini2_render, 'afterRender', function () {
+Matter.Events.on(mini2_render, 'afterRender', () => {
+    mini2_context.font = '18px Lora';
+    mini2_context.fillStyle = '#D8F3DC';
+
     mini2_boxes.forEach(box => {
+        const text = mini2_valueToText.get(box.id);
+        if (!text) return;
 
         mini2_context.save();
-        mini2_context.font = '18px Lora';  // 设置字体
-        mini2_context.fillStyle = '#D8F3DC';  // 设置文字颜色
-
-        // 获取物体的中心位置
-        const x = box.position.x;
-        const y = box.position.y;
-        const angle = box.angle;
-
-        mini2_context.translate(x, y);
-        mini2_context.rotate(angle);
-        // 获取物体的文本内容
-        const word = mini2_valueToText[box.id] || '';
-
-
-        // 绘制文本，居中显示在物体上
+        mini2_context.translate(box.position.x, box.position.y);
+        mini2_context.rotate(box.angle);
         mini2_context.textAlign = 'center';
         mini2_context.textBaseline = 'middle';
-        mini2_context.fillText(word, 0, 0);  // 在物体的中心绘制文本
+        mini2_context.fillText(text, 0, 0);
         mini2_context.restore();
     });
 });
 
-// 监听窗口大小变化，自动调整canvas尺寸以及边界
-window.addEventListener('resize', () => {
-    // 保存旧的canvas尺寸
-    const mini2_oldWidth = mini2_width
-    const mini2_oldHeight = mini2_height
+// 优化窗口大小调整
+const resizeHandler = (() => {
+    let resizeTimer;
+    
+    return () => {
+        if (resizeTimer) {
+            clearTimeout(resizeTimer);
+        }
+        
+        resizeTimer = setTimeout(() => {
+            const mini2_oldWidth = mini2_width;
+            const mini2_oldHeight = mini2_height;
 
-    mini2_width = window.innerWidth * widthFactor;
-    mini2_height = window.innerWidth * heightFactor;
-    // 调整canvas尺寸
-    Matter.Render.setSize(mini2_render, mini2_width, mini2_height);
+            mini2_width = window.innerWidth * widthFactor;
+            mini2_height = window.innerWidth * heightFactor;
 
+            Matter.Render.setSize(mini2_render, mini2_width, mini2_height);
 
-    // 计算新的比例
-    const mini2_scaleX = mini2_width / mini2_oldWidth;
-    const mini2_scaleY = mini2_height / mini2_oldHeight;
+            const mini2_scaleX = mini2_width / mini2_oldWidth;
+            const mini2_scaleY = mini2_height / mini2_oldHeight;
+            const newRectY = mini2_height - (mini2_height * 0.058);
 
-    // 更新墙壁的位置和缩放比例
-    Matter.Body.setPosition(mini2_topWall, { x: mini2_width / 2, y: 0 });
-    Matter.Body.setPosition(mini2_bottomWall, { x: mini2_width / 2, y: mini2_height });
-    Matter.Body.setPosition(mini2_leftWall, { x: 0, y: mini2_height / 2 });
-    Matter.Body.setPosition(mini2_rightWall, { x: mini2_width, y: mini2_height / 2 });
+            // 批量更新位置和缩放
+            const updates = [
+                { body: mini2_topWall, pos: { x: mini2_width / 2, y: 0 }, scale: [mini2_scaleX, 1] },
+                { body: mini2_bottomWall, pos: { x: mini2_width / 2, y: mini2_height }, scale: [mini2_scaleX, 1] },
+                { body: mini2_leftWall, pos: { x: 0, y: mini2_height / 2 }, scale: [1, mini2_scaleY] },
+                { body: mini2_rightWall, pos: { x: mini2_width, y: mini2_height / 2 }, scale: [1, mini2_scaleY] },
+                { body: mini2_rectangle, pos: { x: mini2_width / 2, y: newRectY }, scale: [mini2_scaleX, mini2_scaleY] },
+                { body: leftRect, pos: { x: mini2_width / 2 - (mini2_width * 0.48 / 2) - mini2_width * 0.06, y: newRectY - mini2_height * 0.1 }, scale: [mini2_scaleX, mini2_scaleY] },
+                { body: rightRect, pos: { x: mini2_width / 2 + (mini2_width * 0.48 / 2) + mini2_width * 0.06, y: newRectY - mini2_height * 0.1 }, scale: [mini2_scaleX, mini2_scaleY] }
+            ];
 
-    // 重新缩放墙壁
-    Matter.Body.scale(mini2_topWall, mini2_scaleX, 1);
-    Matter.Body.scale(mini2_bottomWall, mini2_scaleX, 1);
-    Matter.Body.scale(mini2_leftWall, 1, mini2_scaleY);
-    Matter.Body.scale(mini2_rightWall, 1, mini2_scaleY);
+            updates.forEach(({ body, pos, scale }) => {
+                Matter.Body.setPosition(body, pos);
+                Matter.Body.scale(body, ...scale);
+            });
 
-    // 更新矩形的位置
-    const newRectY = mini2_height - (mini2_height * 0.058);
-    Matter.Body.setPosition(mini2_rectangle, { x: mini2_width / 2, y: newRectY });
-    Matter.Body.scale(mini2_rectangle, mini2_scaleX, mini2_scaleY);
+            mini2_Render.lookAt(mini2_render, {
+                min: { x: 0, y: 0 },
+                max: { x: mini2_width, y: mini2_height }
+            });
+        }, 100);
+    };
+})();
 
-
-    // 更新左端点小矩形的位置和尺寸
-    const newLeftRectX = mini2_width / 2 - (mini2_width * 0.48 / 2) - mini2_width * 0.06;
-    const newLeftRectY = newRectY - mini2_height * 0.1;
-    Matter.Body.setPosition(leftRect, { x: newLeftRectX, y: newLeftRectY });
-    Matter.Body.scale(leftRect, mini2_scaleX, mini2_scaleY);
-
-    // 更新右端点小矩形的位置和尺寸
-    const newRightRectX = mini2_width / 2 + (mini2_width * 0.48 / 2) + mini2_width * 0.06;
-    const newRightRectY = newRectY - mini2_height * 0.1;
-    Matter.Body.setPosition(rightRect, { x: newRightRectX, y: newRightRectY });
-    Matter.Body.scale(rightRect, mini2_scaleX, mini2_scaleY);
-
-
-    // 调整渲染器的视角
-    mini2_Render.lookAt(mini2_render, {
-        min: { x: 0, y: 0 },
-        max: { x: mini2_width, y: mini2_height }
-    });
-});
+window.addEventListener('resize', resizeHandler);
