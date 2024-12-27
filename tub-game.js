@@ -138,7 +138,7 @@ document.querySelectorAll('.minigame2buttons').forEach(button => {
 const mini2_context = mini2_render.context;
 
 Matter.Events.on(mini2_render, 'afterRender', () => {
-    mini2_context.font = '18px Lora';
+    mini2_context.font = '600 0.9vw Raleway';
     mini2_context.fillStyle = '#D8F3DC';
 
     mini2_boxes.forEach(box => {

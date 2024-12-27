@@ -1,7 +1,5 @@
 
 
-
-
 function enqueue_game_scripts() {
     // 引入 Matter.js 库
     wp_enqueue_script('matter-js', 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.js', array(), null, true);
@@ -40,4 +38,5 @@ function pass_total_visits_to_js() {
     }
 }
 add_action('wp_enqueue_scripts', 'pass_total_visits_to_js');
+
 

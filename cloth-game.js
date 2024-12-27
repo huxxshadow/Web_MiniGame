@@ -1,263 +1,264 @@
-(function () {
-    // 获取Matter.js库的模块
-    const { Engine, Render, Runner, World, Bodies, Mouse, MouseConstraint, Composite, Composites, Events } = Matter;
+let cloth_game_topWall, cloth_game_bottomWall, cloth_game_leftWall, cloth_game_rightWall, cloth_game_cloth;
+const cloth_game_elements = document.querySelectorAll('.attached-element');
 
-    // 画布和元素
-    const canvas = document.getElementById('cloth_game_world');
-    const elements = document.querySelectorAll('.attached-element');
-    const endElement = document.querySelector('.attached-end-element');
+// 设置画布的尺寸
+const cloth_game_canvas = document.getElementById('cloth_game_world');
+cloth_game_canvas.style.width = '100vw';
+cloth_game_canvas.style.height = '140vw';  // 高度是屏幕宽度的两倍
+const cloth_game_pixelRatio = window.devicePixelRatio;  // 获取设备的像素比
 
-    // 初始化画布尺寸
-    let width = window.innerWidth;
-    let height = width * 1.4;
-    const pixelRatio = window.devicePixelRatio;
+// 动态更新canvas的实际宽高以保证比例正确
+let cloth_game_width = window.innerWidth;
+let cloth_game_height = cloth_game_width * 1.4;
 
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    canvas.width = width;
-    canvas.height = height;
+cloth_game_canvas.width = cloth_game_width;
+cloth_game_canvas.height = cloth_game_height;
 
-    // 创建引擎和世界
-    const engine = Engine.create({
-        enableSleeping: true, // 启用睡眠，提高性能
-    });
-    const world = engine.world;
+// 获取Matter.js库的模块
+const { Engine: cloth_game_Engine, Render: cloth_game_Render, Runner: cloth_game_Runner, World: cloth_game_World, Bodies: cloth_game_Bodies, Mouse: cloth_game_Mouse, MouseConstraint: cloth_game_MouseConstraint, Composite: cloth_game_Composite } = Matter;
 
-    // 调整物理引擎设置，优化性能
-    engine.constraintIterations = 2; // 约束迭代次数（默认2）
-    engine.positionIterations = 6;   // 位置迭代次数（默认6）
-    engine.velocityIterations = 4;   // 速度迭代次数（默认4）
+// 创建引擎
+const cloth_game_engine = cloth_game_Engine.create();
+const cloth_game_world = cloth_game_engine.world;
 
-    // 创建渲染器，禁用不必要的显示选项
-    const render = Render.create({
-        canvas: canvas,
-        engine: engine,
-        options: {
-            width: width,
-            height: height,
-            wireframes: false,
-            background: 'transparent',
-            pixelRatio: pixelRatio,
-            showAngleIndicator: false,
-            showCollisions: false,
-            showVelocity: false,
-            showBroadphase: false,
-            showBounds: false,
-            showDebug: false,
-            showAxes: false,
-            showPositions: false,
-            showConvexHulls: false,
-        }
-    });
+// 创建渲染器
+const cloth_game_render = cloth_game_Render.create({
+    canvas: cloth_game_canvas,
+    engine: cloth_game_engine,
+    options: {
+        width: cloth_game_canvas.width,
+        height: cloth_game_canvas.height,
+        wireframes: false, // 不显示线框
+        background: 'transparent',
+        pixelRatio: cloth_game_pixelRatio
+    }
+});
 
-    // 运行引擎和渲染器
-    Engine.run(engine);
+// 运行引擎和渲染器
+cloth_game_Engine.run(cloth_game_engine);
+cloth_game_Render.run(cloth_game_render);
 
-    // 创建Runner，使用固定时间步长，提高模拟稳定性
-    const runner = Runner.create({
-        delta: 1000 / 60, // 固定时间步长（60 FPS）
-        isFixed: true,
-    });
-    Runner.run(runner, engine);
+// 创建一个Runner来控制物理引擎的更新频率
+const cloth_game_runner = cloth_game_Runner.create();
+cloth_game_Runner.run(cloth_game_runner, cloth_game_engine);
 
-    // 创建边界和布料的函数
-    let cloth;
-    let boundaries = [];
-    let group;
-    let columns = 20; // 减少列数，优化性能
-    let rows = 20;    // 减少行数，优化性能
+// 用于存储元素与粒子之间的映射关系
+const elementBodyMappings = [];
 
-    function createBoundariesAndCloth() {
-        // 如果已经存在，移除之前的布料和边界
-        if (cloth) {
-            Composite.remove(world, cloth);
-        }
-        if (boundaries.length > 0) {
-            Composite.remove(world, boundaries);
-        }
-
-        // 创建新的边界
-        const wallThickness = 10;
-        boundaries = [
-            // 上边界
-            Bodies.rectangle(width / 2, -wallThickness / 2, width, wallThickness, {
-                isStatic: true,
-                restitution: 0.98,
-                render: { fillStyle: 'transparent' }
-            }),
-            // 下边界
-            Bodies.rectangle(width / 2, height + wallThickness / 2, width, wallThickness, {
-                isStatic: true,
-                restitution: 0.98,
-                render: { fillStyle: 'transparent' }
-            }),
-            // 左边界
-            Bodies.rectangle(-wallThickness / 2, height / 2, wallThickness, height, {
-                isStatic: true,
-                restitution: 0.98,
-                render: { fillStyle: 'transparent' }
-            }),
-            // 右边界
-            Bodies.rectangle(width + wallThickness / 2, height / 2, wallThickness, height, {
-                isStatic: true,
-                restitution: 0.98,
-                render: { fillStyle: 'transparent' }
-            })
-        ];
-
-        // 添加边界到世界
-        World.add(world, boundaries);
-
-        // 创建布料
-        const startX = width / 10;
-        const startY = width / 20;
-        const columnGap = width / 120;
-        const rowGap = width / 50;
-        const particleRadius = width / 60;
-        const crossBrace = false;
-
-        group = Body.nextGroup(true);
-
-        const particleOptions = {
-            inertia: Infinity,
-            friction: 0.00002,
-            collisionFilter: { group: group },
-            render: { visible: false }
-        };
-
-        const constraintOptions = {
-            stiffness: 0.06,
-            render: { visible: false } // 禁用约束渲染，优化性能
-        };
-
-        // 使用较小的网格尺寸，优化性能
-        cloth = Composites.stack(startX, startY, columns, rows, columnGap, rowGap, function (x, y) {
-            return Bodies.circle(x, y, particleRadius, particleOptions);
-        });
-
-        // 连接粒子形成网格
-        Composites.mesh(cloth, columns, rows, crossBrace, constraintOptions);
-
-        // 固定顶部的粒子
-        for (let i = 0; i < columns; i++) {
-            cloth.bodies[i].isStatic = true;
-        }
-
-        // 添加布料到世界
-        World.add(world, cloth);
+// 创建边界和布料的函数
+function createBoundariesAndCloth() {
+    // 清除之前的边界和布料
+    if (cloth_game_cloth) {
+        cloth_game_Composite.remove(cloth_game_world, cloth_game_cloth);
+    }
+    if (cloth_game_topWall) {
+        cloth_game_Composite.remove(cloth_game_world, [cloth_game_topWall, cloth_game_bottomWall, cloth_game_leftWall, cloth_game_rightWall]);
     }
 
-    // 初次创建边界和布料
-    createBoundariesAndCloth();
+    // 创建边界（上、下、左、右）
+    const cloth_game_wallThickness = 10;
 
-    // 添加鼠标控制
-    const mouse = Mouse.create(render.canvas);
-    mouse.pixelRatio = pixelRatio;
-
-    const mouseConstraint = MouseConstraint.create(engine, {
-        mouse: mouse,
-        constraint: {
-            stiffness: 0.98,
-            render: { visible: false }
+    cloth_game_topWall = cloth_game_Bodies.rectangle(cloth_game_width / 2, 0, cloth_game_width, cloth_game_wallThickness, {
+        isStatic: true,
+        restitution: 0.98,
+        render: {
+            fillStyle: 'transparent'
         }
     });
 
-    // 根据需要移除鼠标滚轮事件监听
-    if (mouse.mousewheel) {
-        mouse.element.removeEventListener('wheel', mouse.mousewheel);
-        mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
+    cloth_game_bottomWall = cloth_game_Bodies.rectangle(cloth_game_width / 2, cloth_game_height, cloth_game_width, cloth_game_wallThickness, {
+        isStatic: true,
+        restitution: 0.98,
+        render: {
+            fillStyle: 'transparent'
+        }
+    });
+
+    cloth_game_leftWall = cloth_game_Bodies.rectangle(0, cloth_game_height / 2, cloth_game_wallThickness, cloth_game_height, {
+        isStatic: true,
+        restitution: 0.98,
+        render: {
+            fillStyle: 'transparent'
+        }
+    });
+
+    cloth_game_rightWall = cloth_game_Bodies.rectangle(cloth_game_width, cloth_game_height / 2, cloth_game_wallThickness, cloth_game_height, {
+        isStatic: true,
+        restitution: 0.98,
+        render: {
+            fillStyle: 'transparent'
+        }
+    });
+
+    // 添加新边界到物理世界中
+    cloth_game_World.add(cloth_game_world, [cloth_game_topWall, cloth_game_bottomWall, cloth_game_leftWall, cloth_game_rightWall]);
+
+    // 创建布料
+    const cloth_game_xx = cloth_game_width / 10;
+    const cloth_game_yy = cloth_game_width / 20;
+    const cloth_game_columns = 20;
+    const cloth_game_rows = 20;
+    const cloth_game_columnGap = cloth_game_width / 120;
+    const cloth_game_rowGap = cloth_game_width / 50;
+    const cloth_game_particleRadius = cloth_game_width / 60;
+    const cloth_game_crossBrace = false;
+
+    const cloth_game_group = Matter.Body.nextGroup(true);
+    const cloth_game_particleOptions = {
+        inertia: Infinity,
+        friction: 0.00002,
+        collisionFilter: { group: cloth_game_group },
+        render: { visible: false }
+    };
+
+    const cloth_game_constraintOptions = {
+        stiffness: 0.06,
+        render: { type: 'line', anchors: false, strokeStyle: "#1B4332" }
+    };
+
+    // 创建粒子网格（布料）
+    cloth_game_cloth = Matter.Composites.stack(cloth_game_xx, cloth_game_yy, cloth_game_columns, cloth_game_rows, cloth_game_columnGap, cloth_game_rowGap, function (x, y) {
+        return Matter.Bodies.circle(x, y, cloth_game_particleRadius, cloth_game_particleOptions);
+    });
+
+    // 连接粒子为网格（布料的约束）
+    Matter.Composites.mesh(cloth_game_cloth, cloth_game_columns, cloth_game_rows, cloth_game_crossBrace, cloth_game_constraintOptions);
+
+    for (let i = 0; i < 20; i++) {
+        cloth_game_cloth.bodies[i].isStatic = true;
+    }
+    // 固定每一行的首位两个粒子
+    for (let row = 0; row < cloth_game_rows; row++) {
+        const firstParticleIndex = row * cloth_game_columns;          // 每一行的第一个粒子
+        const lastParticleIndex = (row + 1) * cloth_game_columns - 1; // 每一行的最后一个粒子
+
+        cloth_game_cloth.bodies[firstParticleIndex].isStatic = true;
+        cloth_game_cloth.bodies[lastParticleIndex].isStatic = true;
     }
 
-    World.add(world, mouseConstraint);
+    // 添加布料到物理世界中
+    cloth_game_World.add(cloth_game_world, cloth_game_cloth);
+}
 
-    // 保持鼠标与渲染同步
-    render.mouse = mouse;
+// 检查Story Net tab是否active
+function isStoryNetActive() {
+    const storyNetTab = document.getElementById('tab-storynet');
+    return storyNetTab && storyNetTab.classList.contains('kt-tab-title-active');
+}
 
-    // 缓存元素的尺寸，避免重复计算
-    const elementDimensions = Array.from(elements).map(element => ({
-        element: element,
-        width: element.offsetWidth,
-        height: element.offsetHeight - width / 1.25 - 550
-    }));
+// 更新元素显示状态
+function updateElementsVisibility() {
+    const isActive = isStoryNetActive();
+    
+    cloth_game_elements.forEach(element => {
+        element.style.visibility = isActive ? 'visible' : 'hidden';
+    });
+    
+    const endElement = document.getElementsByClassName('attached-end-element')[0];
+    if (endElement) {
+        endElement.style.visibility = isActive ? 'visible' : 'hidden';
+    }
+}
 
-    const endElementWidth = endElement.offsetWidth;
-    const endElementHeight = endElement.offsetHeight - width / 1.3 - 450;
+// 初次创建边界和布料，但仅在Story Net active时显示元素
+createBoundariesAndCloth();
+updateElementsVisibility();
 
-    // 更新元素位置的函数
-    function updateElementPositions() {
-        window.requestAnimationFrame(() => {
-            elementDimensions.forEach(({ element, width: elemWidth, height: elemHeight }, index) => {
-                let bodyIndex = (index % 2 === 0)
-                    ? 44 + Math.floor((index + 1) / 2) * 60
-                    : 15 + Math.floor((index + 1) / 2) * 60;
+// 添加鼠标控制
+const cloth_game_mouse = cloth_game_Mouse.create(cloth_game_render.canvas);
+cloth_game_mouse.pixelRatio = cloth_game_pixelRatio;
+const cloth_game_mouseConstraint = cloth_game_MouseConstraint.create(cloth_game_engine, {
+    mouse: cloth_game_mouse,
+    constraint: {
+        stiffness: 0.98,
+        render: {
+            visible: false
+        }
+    }
+});
 
-                const body = cloth.bodies[bodyIndex];
-                if (body) {
-                    const translateX = body.position.x - elemWidth / 2;
-                    const translateY = body.position.y - elemHeight / 2;
-                    element.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                    element.style.position = 'absolute';
-                }
-            });
+cloth_game_mouse.element.removeEventListener('wheel', cloth_game_mouse.mousewheel);
+cloth_game_mouse.element.removeEventListener('DOMMouseScroll', cloth_game_mouse.mousewheel);
 
-            // 更新endElement的位置
-            const middleParticleIndex = columns * rows - Math.floor(columns / 2) - 1;
-            const middleParticle = cloth.bodies[middleParticleIndex];
+cloth_game_World.add(cloth_game_world, cloth_game_mouseConstraint);
 
-            if (middleParticle) {
-                const translateX = middleParticle.position.x - endElementWidth / 2;
-                const translateY = middleParticle.position.y - endElementHeight / 2;
-                endElement.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                endElement.style.position = 'absolute';
+// 保持鼠标与渲染同步
+cloth_game_render.mouse = cloth_game_mouse;
+
+// 监听tab切换事件
+const tabsContainer = document.querySelector('.kt-tabs-wrap');
+if (tabsContainer) {
+    tabsContainer.addEventListener('click', function(event) {
+        // 给一个小延迟确保类名已更新
+        setTimeout(updateElementsVisibility, 50);
+    });
+}
+
+Matter.Events.on(cloth_game_engine, 'afterUpdate', function () {
+    if (!isStoryNetActive()) return; // 如果Story Net不是active，不更新位置
+
+    cloth_game_elements.forEach((element, index) => {
+        var bodyIndex = 0;
+        if (index % 2 == 0) {
+            bodyIndex = 44 + Math.floor((index + 1) / 2) * 60;
+        } else {
+            bodyIndex = 15 + Math.floor((index + 1) / 2) * 60;
+        }
+
+        if (cloth_game_cloth.bodies[bodyIndex]) {
+            const body = cloth_game_cloth.bodies[bodyIndex];
+            const elementWidth = element.offsetWidth;
+            const elementHeight = element.offsetHeight - cloth_game_width / 1.25-550;
+
+            element.style.position = "absolute";
+            element.style.left = (body.position.x - elementWidth / 2) + 'px';
+            element.style.top = (body.position.y - elementHeight / 2) + 'px';
+        }
+
+        const middleParticleIndex = 20 * 20 - 20 / 2;
+        const middleParticle = cloth_game_cloth.bodies[middleParticleIndex];
+
+        if (middleParticle) {
+            const endElement = document.getElementsByClassName('attached-end-element')[0];
+            if (endElement) {
+                const endElementWidth = endElement.offsetWidth;
+                const endElementHeight = endElement.offsetHeight - cloth_game_width / 1.3 -450;
+
+                endElement.style.position = "absolute";
+                endElement.style.left = (middleParticle.position.x - endElementWidth / 2) + 'px';
+                endElement.style.top = (middleParticle.position.y - endElementHeight / 2) + 'px';
             }
-        });
-    }
-
-    // 监听引擎的afterUpdate事件，更新元素位置
-    Events.on(engine, 'afterUpdate', updateElementPositions);
-
-    // 优化窗口大小变化时的处理，使用防抖函数
-    let resizeTimeout;
-    let previousWidth = width;
-    let previousHeight = height;
-
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            // 更新画布尺寸
-            width = window.innerWidth;
-            height = width * 1.4;
-
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            canvas.width = width;
-            canvas.height = height;
-
-            // 调整渲染器的尺寸和视角
-            Render.setSize(render, width, height);
-            render.bounds.max.x = width;
-            render.bounds.max.y = height;
-
-            // 计算缩放比例
-            const scaleRatioX = width / previousWidth;
-            const scaleRatioY = height / previousHeight;
-
-            // 缩放世界中的所有物体
-            Composite.scale(world, scaleRatioX, scaleRatioY, { x: 0, y: 0 });
-
-            // 更新之前的尺寸
-            previousWidth = width;
-            previousHeight = height;
-
-            // 重新计算元素尺寸
-            elementDimensions.forEach(item => {
-                item.width = item.element.offsetWidth;
-                item.height = item.element.offsetHeight - width / 1.25 - 550;
-            });
-
-            // 更新endElement的尺寸
-            endElementWidth = endElement.offsetWidth;
-            endElementHeight = endElement.offsetHeight - width / 1.3 - 450;
-        }, 100); // 防抖延迟，单位为毫秒
+        }
     });
-})();
+});
+
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        const later = () => {
+            timeout = null;
+            func.apply(this, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 监听窗口大小变化
+window.addEventListener('resize', debounce(() => {
+    cloth_game_width = window.innerWidth;
+    cloth_game_height = cloth_game_width * 1.4;
+
+    cloth_game_canvas.width = cloth_game_width;
+    cloth_game_canvas.height = cloth_game_height;
+
+    Matter.Render.setSize(cloth_game_render, cloth_game_width, cloth_game_height);
+    cloth_game_Render.lookAt(cloth_game_render, {
+        min: { x: 0, y: 0 },
+        max: { x: cloth_game_width, y: cloth_game_height }
+    });
+
+    createBoundariesAndCloth();
+    updateElementsVisibility();
+}, 200));
